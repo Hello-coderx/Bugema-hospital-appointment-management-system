@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Staff — Bugema Hospital</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="brand">
+    <img src="{{ url_for('static', filename='images/Bugema_logo.png') }}" alt="Logo" class="nav-logo"/>
+    <strong>Bugema Hospital</strong>
+  </div>
+  <div class="nav-links">
+    <a href="{{ url_for('main.staff_dashboard') }}"    {% if section=='overview'    %}class="active"{% endif %}>Dashboard</a>
+    <a href="{{ url_for('main.staff_appointments') }}" {% if section=='appointments'%}class="active"{% endif %}>Appointments</a>
+    <a href="{{ url_for('main.staff_patients') }}"     {% if section=='patients'    %}class="active"{% endif %}>Patients</a>
+    <a href="{{ url_for('main.staff_add_patient') }}"  {% if section=='add_patient' %}class="active"{% endif %}>Register Patient</a>
+    <a href="{{ url_for('main.services') }}">Services</a>
+  </div>
+  <div class="nav-user">
+    <span class="pill role-staff">RECEPTIONIST</span>
+    <span class="uname">{{ session.name }}</span>
+    <a href="{{ url_for('main.change_password') }}" class="btn-chpw">🔑 Change Password</a>
+    <a href="{{ url_for('main.logout') }}" class="btn-logout">Logout</a>
+  </div>
+</nav>
+
+<div class="flash-zone">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="alert alert-{{ cat }}">{{ msg }}</div>{% endfor %}
+  {% endwith %}
+  {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+</div>
+
+<main>
+
+{# ── OVERVIEW ── #}
+{% if section == 'overview' %}
+<div class="page-hdr">
+  <div><h2>Reception Dashboard</h2><p>Welcome, <strong>{{ session.name }}</strong>.</p></div>
+</div>
+<div class="stats-grid">
+  <div class="sc blue">  <div class="sn">{{ stats.total }}</div>    <div class="sl">Total Appointments</div></div>
+  <div class="sc yellow"><div class="sn">{{ stats.pending }}</div>   <div class="sl">Pending</div></div>
+  <div class="sc green"> <div class="sn">{{ stats.confirmed }}</div> <div class="sl">Confirmed</div></div>
+  <div class="sc teal">  <div class="sn">{{ stats.today }}</div>     <div class="sl">Today</div></div>
+</div>
+<div class="action-bar">
+  <button class="btn-primary" onclick="show('modal-add-appt')">+ New Appointment</button>
+  <a href="{{ url_for('main.staff_add_patient') }}" class="btn-secondary">+ Register Patient</a>
+</div>
+<div class="card">
+  <div class="card-hdr"><h3>Recent Appointments</h3><a href="{{ url_for('main.staff_appointments') }}" class="btn-sm-outline">View All</a></div>
+  {% if recent %}
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Patient</th><th>Doctor</th><th>Date</th><th>Time</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>{% for a in recent %}<tr>
+      <td>{{ a.patient_name }}</td><td>{{ a.doctor_name }}</td>
+      <td>{{ a.date }}</td><td>{{ a.time }}</td>
+      <td><span class="badge s-{{ a.status|lower }}">{{ a.status }}</span></td>
+      <td><button class="btn-sm-outline" onclick="openEdit('{{ a._id }}','{{ a.patient_id }}','{{ a.doctor_id }}','{{ a.date }}','{{ a.time }}','{{ a.reason|replace("'","\\'") }}','{{ a.status }}')">Edit</button></td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="empty">📋 <p>No appointments yet.</p></div>{% endif %}
+</div>
+
+
+{# ── APPOINTMENTS ── #}
+{% elif section == 'appointments' %}
+<div class="page-hdr">
+  <div><h2>Appointments</h2></div>
+  <button class="btn-primary" onclick="show('modal-add-appt')">+ New Appointment</button>
+</div>
+<div class="filter-bar">
+  <form method="GET" action="{{ url_for('main.staff_appointments') }}" class="filter-form">
+    <select name="status" onchange="this.form.submit()">
+      <option value="">All Statuses</option>
+      {% for s in ['Pending','Confirmed','Completed','Cancelled'] %}
+        <option value="{{ s }}" {% if status_filter==s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+{% if appointments %}
+<div class="card"><div class="tbl-wrap"><table>
+  <thead><tr><th>Patient</th><th>Doctor</th><th>Date</th><th>Time</th><th>Reason</th><th>Status</th><th>Payment</th><th>Actions</th></tr></thead>
+  <tbody>{% for a in appointments %}<tr>
+    <td>{{ a.patient_name }}</td><td>{{ a.doctor_name }}</td>
+    <td>{{ a.date }}</td><td>{{ a.time }}</td><td>{{ a.reason }}</td>
+    <td><span class="badge s-{{ a.status|lower }}">{{ a.status }}</span></td>
+    <td>
+      {% if a.get('payment_status') == 'paid' %}
+        <span class="badge s-green">Paid (UGX {{ a.get('payment_amount', 0) | int }})</span>
+      {% else %}
+        <span class="badge s-red">Unpaid</span>
+      {% endif %}
+    </td>
+    <td>
+      {% if a.get('payment_status') != 'paid' %}
+      <button class="btn-sm-success" onclick="showPaymentModal('{{ a._id }}')">💰 Record Payment</button>
+      {% endif %}
+      <button class="btn-sm-outline" onclick="openEdit('{{ a._id }}','{{ a.patient_id }}','{{ a.doctor_id }}','{{ a.date }}','{{ a.time }}','{{ a.reason|replace("'","\\'") }}','{{ a.status }}')">Edit</button>
+    </td>
+  </tr>{% endfor %}</tbody>
+</table></div></div>
+{% else %}<div class="empty">📋 <p>No appointments found.</p></div>{% endif %}
+
+
+{# ── PATIENTS LIST ── #}
+{% elif section == 'patients' %}
+<div class="page-hdr">
+  <div><h2>Registered Patients</h2></div>
+  <a href="{{ url_for('main.staff_add_patient') }}" class="btn-primary">+ Register Patient</a>
+</div>
+{% if patients %}
+<div class="card"><div class="tbl-wrap"><table>
+  <thead><tr><th>Full Name</th><th>Email</th><th>Phone</th><th>Gender</th><th>Date of Birth</th><th>Address</th></tr></thead>
+  <tbody>{% for p in patients %}<tr>
+    <td>{{ p.get('full_name') or p.get('name') or '—' }}</td>
+    <td>{{ p.get('email') or '—' }}</td>
+    <td>{{ p.get('phone') or '—' }}</td>
+    <td>{{ p.get('gender') or '—' }}</td>
+    <td>{{ p.get('dob') or '—' }}</td>
+    <td>{{ p.get('address') or '—' }}</td>
+  </tr>{% endfor %}</tbody>
+</table></div></div>
+{% else %}<div class="empty">🧑‍⚕️ <p>No patients registered yet.</p></div>{% endif %}
+
+
+{# ── REGISTER PATIENT ── #}
+{% elif section == 'add_patient' %}
+<div class="page-hdr"><div><h2>Register New Patient</h2></div></div>
+<div class="card form-card">
+  <form method="POST" action="{{ url_for('main.staff_add_patient') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <div class="frow">
+      <div class="fg"><label>Full Name</label><input type="text" name="full_name" required/></div>
+      <div class="fg"><label>Gender</label>
+        <select name="gender"><option value="">--</option><option>Male</option><option>Female</option><option>Other</option></select>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Email</label><input type="email" name="email" required/></div>
+      <div class="fg"><label>Phone</label><input type="tel" name="phone" required/></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Date of Birth</label><input type="date" name="dob"/></div>
+      <div class="fg"><label>Address</label><input type="text" name="address"/></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Login Username</label><input type="text" name="username" required/></div>
+      <div class="fg"><label>Password <small>(min 8 chars)</small></label><input type="password" name="password" required/></div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn-primary">Register Patient</button>
+      <a href="{{ url_for('main.staff_dashboard') }}" class="btn-outline">Cancel</a>
+    </div>
+  </form>
+</div>
+
+{% endif %}
+</main>
+
+<!-- ADD APPOINTMENT MODAL -->
+<div id="modal-add-appt" class="modal" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-hdr"><h3>Book New Appointment</h3><button class="modal-close" onclick="hide('modal-add-appt')">&times;</button></div>
+    <form method="POST" action="{{ url_for('main.staff_add_appointment') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <div class="frow">
+        <div class="fg"><label>Patient</label>
+          <select name="patient_id" required><option value="">-- Select --</option>
+            {% for p in patients %}<option value="{{ p._id }}">{{ p.get('full_name') or p.get('name') or 'Unknown' }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="fg"><label>Doctor</label>
+          <select name="doctor_id" required><option value="">-- Select --</option>
+            {% for d in doctors %}<option value="{{ d._id }}">Dr. {{ d.name }} — {{ d.department }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label>Date</label><input type="date" name="date" required/></div>
+        <div class="fg"><label>Time</label><input type="time" name="time" required/></div>
+      </div>
+      <div class="fg"><label>Reason</label><textarea name="reason" rows="2" required></textarea></div>
+      <div class="fg"><label>Status</label>
+        <select name="status">
+          {% for s in ['Pending','Confirmed','Completed','Cancelled'] %}
+            <option value="{{ s }}" {% if s=='Pending' %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn-primary">Book</button>
+        <button type="button" class="btn-outline" onclick="hide('modal-add-appt')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- EDIT APPOINTMENT MODAL -->
+<div id="modal-edit-appt" class="modal" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-hdr"><h3>Edit Appointment</h3><button class="modal-close" onclick="hide('modal-edit-appt')">&times;</button></div>
+    <form method="POST" id="edit-form" action="">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <div class="frow">
+        <div class="fg"><label>Patient</label>
+          <select name="patient_id" id="ep" required>
+            {% for p in patients %}<option value="{{ p._id }}">{{ p.get('full_name') or p.get('name') or 'Unknown' }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="fg"><label>Doctor</label>
+          <select name="doctor_id" id="ed" required>
+            {% for d in doctors %}<option value="{{ d._id }}">Dr. {{ d.name }} — {{ d.department }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label>Date</label><input type="date" name="date" id="edate" required/></div>
+        <div class="fg"><label>Time</label><input type="time" name="time" id="etime" required/></div>
+      </div>
+      <div class="fg"><label>Reason</label><textarea name="reason" id="ereason" rows="2" required></textarea></div>
+      <div class="fg"><label>Status</label>
+        <select name="status" id="estatus">
+          {% for s in ['Pending','Confirmed','Completed','Cancelled'] %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn-primary">Save</button>
+        <button type="button" class="btn-outline" onclick="hide('modal-edit-appt')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- PAYMENT MODAL -->
+<div id="modal-payment" class="modal" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-hdr"><h3>Record Payment</h3><button class="modal-close" onclick="hide('modal-payment')">&times;</button></div>
+    <form method="POST" id="payment-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <div class="fg"><label>Payment Method</label>
+        <select name="payment_method" required>
+          <option value="cash">Cash</option>
+          <option value="mobile_money">Mobile Money (MTN/Airtel)</option>
+          <option value="card">Card (Visa/Mastercard)</option>
+          <option value="bank_transfer">Bank Transfer</option>
+          <option value="insurance">Insurance</option>
+        </select>
+      </div>
+      <div class="fg"><label>Amount (UGX)</label><input type="number" name="amount" required min="1" placeholder="50000"/></div>
+      <div class="fg"><label>Reference Number</label><input type="text" name="reference" placeholder="Receipt/Transaction number"/></div>
+      <div class="modal-actions">
+        <button type="submit" class="btn-primary">Record Payment</button>
+        <button type="button" class="btn-outline" onclick="hide('modal-payment')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<footer>Bugema University Hospital &mdash; All rights reserved.</footer>
+<script>
+function show(id){ document.getElementById(id).style.display='flex'; }
+function hide(id){ document.getElementById(id).style.display='none'; }
+
+function showPaymentModal(apptId){
+  document.getElementById('payment-form').action='/staff/appointments/'+apptId+'/payment';
+  show('modal-payment');
+}
+
+function openEdit(id,pid,did,date,time,reason,status){
+  document.getElementById('edit-form').action='/staff/appointments/'+id+'/edit';
+  document.getElementById('ep').value=pid;
+  document.getElementById('ed').value=did;
+  document.getElementById('edate').value=date;
+  document.getElementById('etime').value=time;
+  document.getElementById('ereason').value=reason;
+  document.getElementById('estatus').value=status;
+  show('modal-edit-appt');
+}
+window.onclick=function(e){
+  document.querySelectorAll('.modal').forEach(function(m){ if(e.target===m) m.style.display='none'; });
+};
+</script>
+</body>
+</html>

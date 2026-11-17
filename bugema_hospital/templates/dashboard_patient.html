@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Dashboard — Bugema Hospital</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="brand">
+    <img src="{{ url_for('static', filename='images/Bugema_logo.png') }}" alt="Logo" class="nav-logo"/>
+    <strong>Bugema Hospital</strong>
+  </div>
+  <div class="nav-links">
+    <a href="{{ url_for('main.patient_dashboard') }}"    {% if section=='overview'     %}class="active"{% endif %}>Dashboard</a>
+    <a href="{{ url_for('main.patient_appointments') }}" {% if section=='appointments' %}class="active"{% endif %}>My Appointments</a>
+    <a href="{{ url_for('main.services') }}">Services</a>
+  </div>
+  <div class="nav-user">
+    <span class="pill role-patient">PATIENT</span>
+    <span class="uname">{{ session.name }}</span>
+    <a href="{{ url_for('main.change_password') }}" class="btn-chpw">🔑 Change Password</a>
+    <a href="{{ url_for('main.logout') }}" class="btn-logout">Logout</a>
+  </div>
+</nav>
+
+<div class="flash-zone">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="alert alert-{{ cat }}">{{ msg }}</div>{% endfor %}
+  {% endwith %}
+</div>
+
+<main>
+
+{# ── OVERVIEW ── #}
+{% if section == 'overview' %}
+<div class="page-hdr">
+  <div>
+    <h2>Patient Dashboard</h2>
+    <p>Welcome, <strong>{{ patient.get('full_name') if patient else session.name }}</strong>.</p>
+  </div>
+</div>
+
+{% if patient %}
+<div class="stats-grid">
+  <div class="sc blue">  <div class="sn">{{ appointments|length }}</div>                                                  <div class="sl">My Appointments</div></div>
+  <div class="sc yellow"><div class="sn">{{ appointments|selectattr('status','equalto','Pending')|list|length }}</div>    <div class="sl">Pending</div></div>
+  <div class="sc green"> <div class="sn">{{ appointments|selectattr('status','equalto','Confirmed')|list|length }}</div>  <div class="sl">Confirmed</div></div>
+  <div class="sc teal">  <div class="sn">{{ appointments|selectattr('status','equalto','Completed')|list|length }}</div>  <div class="sl">Completed</div></div>
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <div class="card-hdr"><h3>My Profile</h3></div>
+    <div class="profile-info">
+      <div class="pi"><span>Full Name</span>    <strong>{{ patient.get('full_name') or '—' }}</strong></div>
+      <div class="pi"><span>Email</span>         <strong>{{ patient.get('email') or '—' }}</strong></div>
+      <div class="pi"><span>Phone</span>         <strong>{{ patient.get('phone') or '—' }}</strong></div>
+      <div class="pi"><span>Gender</span>        <strong>{{ patient.get('gender') or '—' }}</strong></div>
+      <div class="pi"><span>Date of Birth</span> <strong>{{ patient.get('dob') or '—' }}</strong></div>
+      <div class="pi"><span>Address</span>       <strong>{{ patient.get('address') or '—' }}</strong></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr"><h3>Recent Appointments</h3><a href="{{ url_for('main.patient_appointments') }}" class="btn-sm-outline">View All</a></div>
+    {% if appointments %}
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Doctor</th><th>Date</th><th>Time</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody>{% for a in appointments[:5] %}<tr>
+        <td>{{ a.doctor_name }}</td><td>{{ a.date }}</td><td>{{ a.time }}</td>
+        <td><span class="badge s-{{ a.status|lower }}">{{ a.status }}</span></td>
+        <td>{% if a.status in ['Pending','Confirmed'] %}
+          <form method="POST" action="{{ url_for('main.patient_cancel', appt_id=a._id) }}" onsubmit="return confirm('Cancel this appointment?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <button class="btn-sm-danger">Cancel</button>
+          </form>
+        {% else %}<span class="muted">—</span>{% endif %}</td>
+      </tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<div class="empty">📅 <p>No appointments yet. Book one below.</p></div>{% endif %}
+  </div>
+</div>
+{% else %}
+<div class="alert alert-warning">
+  Your patient profile is not set up yet. You can still book appointments — the system will register your profile automatically. For a complete profile, contact the reception desk.
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-hdr"><h3>Available Doctors</h3></div>
+  {% if doctors %}
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Doctor</th><th>Department</th><th>Action</th></tr></thead>
+    <tbody>{% for d in doctors %}<tr>
+      <td>Dr. {{ d.name }}</td><td>{{ d.department }}</td>
+      <td><button class="btn-sm-primary" onclick="openBooking('{{ d._id }}','Dr. {{ d.name }}')">Book Appointment</button></td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="empty">👨‍⚕️ <p>No doctors available at the moment.</p></div>{% endif %}
+</div>
+
+<div class="card" id="booking-form" style="display:none;">
+  <div class="card-hdr"><h3>Book Appointment</h3><button class="btn-sm-outline" onclick="document.getElementById('booking-form').style.display='none'">Cancel</button></div>
+  <form method="POST" action="{{ url_for('main.patient_add_appointment') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <input type="hidden" name="doctor_id" id="sel-doctor-id"/>
+    <div class="fg"><label>Doctor</label><input type="text" id="sel-doctor-name" readonly/></div>
+    <div class="frow">
+      <div class="fg"><label>Date</label><input type="date" name="date" required/></div>
+      <div class="fg"><label>Time</label><input type="time" name="time" required/></div>
+    </div>
+    <div class="fg"><label>Reason for visit</label><textarea name="reason" rows="3" required></textarea></div>
+    <button type="submit" class="btn-primary">Request Appointment</button>
+  </form>
+</div>
+
+
+{# ── ALL APPOINTMENTS ── #}
+{% elif section == 'appointments' %}
+<div class="page-hdr">
+  <div><h2>My Appointments</h2></div>
+</div>
+{% if appointments %}
+<div class="card"><div class="tbl-wrap"><table>
+  <thead><tr><th>Doctor</th><th>Date</th><th>Time</th><th>Reason</th><th>Status</th><th>Action</th></tr></thead>
+  <tbody>{% for a in appointments %}<tr>
+    <td>{{ a.doctor_name }}</td><td>{{ a.date }}</td><td>{{ a.time }}</td><td>{{ a.reason }}</td>
+    <td><span class="badge s-{{ a.status|lower }}">{{ a.status }}</span></td>
+    <td>{% if a.status in ['Pending','Confirmed'] %}
+      <form method="POST" action="{{ url_for('main.patient_cancel', appt_id=a._id) }}" onsubmit="return confirm('Cancel this appointment?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <button class="btn-sm-danger">Cancel</button>
+      </form>
+    {% else %}<span class="muted">—</span>{% endif %}</td>
+  </tr>{% endfor %}</tbody>
+</table></div></div>
+{% else %}<div class="empty">📅 <p>No appointments on record.</p></div>{% endif %}
+
+{% endif %}
+</main>
+
+<footer>Bugema University Hospital &mdash; All rights reserved.</footer>
+<script>
+function openBooking(doctorId, doctorName){
+  document.getElementById('sel-doctor-id').value = doctorId;
+  document.getElementById('sel-doctor-name').value = doctorName;
+  var f = document.getElementById('booking-form');
+  f.style.display = 'block';
+  f.scrollIntoView({behavior:'smooth'});
+}
+</script>
+</body>
+</html>

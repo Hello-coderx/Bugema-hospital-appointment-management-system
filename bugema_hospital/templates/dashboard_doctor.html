@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Doctor — Bugema Hospital</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="brand">
+    <img src="{{ url_for('static', filename='images/Bugema_logo.png') }}" alt="Logo" class="nav-logo"/>
+    <strong>Bugema Hospital</strong>
+  </div>
+  <div class="nav-links">
+    <a href="{{ url_for('main.doctor_dashboard') }}"    {% if section=='overview'     %}class="active"{% endif %}>Dashboard</a>
+    <a href="{{ url_for('main.doctor_appointments') }}" {% if section=='appointments' %}class="active"{% endif %}>My Schedule</a>
+    <a href="{{ url_for('main.services') }}">Services</a>
+  </div>
+  <div class="nav-user">
+    <span class="pill role-doctor">DOCTOR</span>
+    <span class="uname">{{ session.name }}</span>
+    <a href="{{ url_for('main.change_password') }}" class="btn-chpw">🔑 Change Password</a>
+    <a href="{{ url_for('main.logout') }}" class="btn-logout">Logout</a>
+  </div>
+</nav>
+
+<div class="flash-zone">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="alert alert-{{ cat }}">{{ msg }}</div>{% endfor %}
+  {% endwith %}
+</div>
+
+<main>
+
+{% if not doctor %}
+<div class="page-hdr"><h2>Doctor Dashboard</h2></div>
+<div class="alert alert-warning">
+  Your doctor profile is not linked to your account (<strong>{{ session.username }}</strong>).
+  Ask the administrator to set your username in your doctor record.
+</div>
+
+{% else %}
+
+{# ══ OVERVIEW ══ #}
+{% if section == 'overview' %}
+<div class="page-hdr">
+  <div><h2>Doctor Dashboard</h2><p>Dr. <strong>{{ doctor.name }}</strong> &mdash; {{ doctor.department }}</p></div>
+</div>
+<div class="stats-grid">
+  <div class="sc blue">  <div class="sn">{{ stats.total }}</div>    <div class="sl">My Appointments</div></div>
+  <div class="sc yellow"><div class="sn">{{ stats.pending }}</div>   <div class="sl">Pending</div></div>
+  <div class="sc green"> <div class="sn">{{ stats.confirmed }}</div> <div class="sl">Confirmed</div></div>
+  <div class="sc teal">  <div class="sn">{{ stats.today }}</div>     <div class="sl">Today</div></div>
+  <div class="sc purple"><div class="sn">{{ stats.completed }}</div> <div class="sl">Completed</div></div>
+</div>
+<div class="action-bar">
+  <a href="{{ url_for('main.doctor_appointments') }}" class="btn-primary">View Full Schedule</a>
+</div>
+<div class="card">
+  <div class="card-hdr"><h3>Today's &amp; Upcoming</h3><a href="{{ url_for('main.doctor_appointments') }}" class="btn-sm-outline">View All</a></div>
+  {% if appointments %}
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Patient</th><th>Date</th><th>Time</th><th>Reason</th><th>Status</th><th>Update</th></tr></thead>
+    <tbody>{% for a in appointments %}<tr>
+      <td>{{ a.patient_name }}</td><td>{{ a.date }}</td><td>{{ a.time }}</td><td>{{ a.reason }}</td>
+      <td><span class="badge s-{{ a.status|lower }}">{{ a.status }}</span></td>
+      <td>{% if a.status not in ['Completed','Cancelled'] %}
+        <form method="POST" action="{{ url_for('main.doctor_update_status', appt_id=a._id) }}" class="iline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          <select name="status" class="sel-sm">
+            <option value="Confirmed"  {% if a.status=='Confirmed' %}selected{% endif %}>Confirmed</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+          <button type="submit" class="btn-sm-primary">Save</button>
+        </form>
+      {% else %}<span class="muted">Finalised</span>{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="empty">🩺 <p>No appointments assigned yet.</p></div>{% endif %}
+</div>
+
+{# ══ FULL SCHEDULE ══ #}
+{% elif section == 'appointments' %}
+<div class="page-hdr">
+  <div><h2>My Full Schedule</h2><p>Dr. {{ doctor.name }} &mdash; {{ doctor.department }}</p></div>
+</div>
+<div class="filter-bar">
+  <form method="GET" action="{{ url_for('main.doctor_appointments') }}" class="filter-form">
+    <select name="status" onchange="this.form.submit()">
+      <option value="">All Statuses</option>
+      {% for s in ['Pending','Confirmed','Completed','Cancelled'] %}
+        <option value="{{ s }}" {% if status_filter==s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+{% if appointments %}
+<div class="card"><div class="tbl-wrap"><table>
+  <thead><tr><th>Patient</th><th>Date</th><th>Time</th><th>Reason</th><th>Status</th><th>Update</th></tr></thead>
+  <tbody>{% for a in appointments %}<tr>
+    <td>{{ a.patient_name }}</td><td>{{ a.date }}</td><td>{{ a.time }}</td><td>{{ a.reason }}</td>
+    <td><span class="badge s-{{ a.status|lower }}">{{ a.status }}</span></td>
+    <td>{% if a.status not in ['Completed','Cancelled'] %}
+      <form method="POST" action="{{ url_for('main.doctor_update_status', appt_id=a._id) }}" class="iline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <select name="status" class="sel-sm">
+          <option value="Confirmed"  {% if a.status=='Confirmed' %}selected{% endif %}>Confirmed</option>
+          <option value="Completed">Completed</option>
+          <option value="Cancelled">Cancelled</option>
+        </select>
+        <button type="submit" class="btn-sm-primary">Save</button>
+      </form>
+    {% else %}<span class="muted">Finalised</span>{% endif %}</td>
+  </tr>{% endfor %}</tbody>
+</table></div></div>
+{% else %}<div class="empty">🩺 <p>No appointments for that filter.</p></div>{% endif %}
+
+{% endif %}
+{% endif %}
+
+</main>
+<footer>Bugema University Hospital &mdash; All rights reserved.</footer>
+</body>
+</html>

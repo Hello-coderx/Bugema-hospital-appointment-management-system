@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Services — Bugema Hospital</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="brand">
+    <img src="{{ url_for('static', filename='images/Bugema_logo.png') }}" alt="Logo" class="nav-logo"/>
+    <strong>Bugema Hospital</strong>
+  </div>
+  <div class="nav-links">
+    {% if session.role == 'admin' %}
+      <a href="{{ url_for('main.admin_dashboard') }}">Dashboard</a>
+      <a href="{{ url_for('main.admin_appointments') }}">Appointments</a>
+      <a href="{{ url_for('main.admin_patients') }}">Patients</a>
+      <a href="{{ url_for('main.admin_doctors') }}">Doctors</a>
+      <a href="{{ url_for('main.admin_staff') }}">Staff</a>
+      <a href="{{ url_for('main.admin_users') }}">Users</a>
+      <a href="{{ url_for('main.services') }}" class="active">Services</a>
+    {% elif session.role == 'staff' %}
+      <a href="{{ url_for('main.staff_dashboard') }}">Dashboard</a>
+      <a href="{{ url_for('main.staff_appointments') }}">Appointments</a>
+      <a href="{{ url_for('main.staff_patients') }}">Patients</a>
+      <a href="{{ url_for('main.staff_add_patient') }}">Register Patient</a>
+      <a href="{{ url_for('main.services') }}" class="active">Services</a>
+    {% elif session.role == 'doctor' %}
+      <a href="{{ url_for('main.doctor_dashboard') }}">Dashboard</a>
+      <a href="{{ url_for('main.doctor_appointments') }}">My Schedule</a>
+      <a href="{{ url_for('main.services') }}" class="active">Services</a>
+    {% elif session.role == 'patient' %}
+      <a href="{{ url_for('main.patient_dashboard') }}">Dashboard</a>
+      <a href="{{ url_for('main.patient_appointments') }}">My Appointments</a>
+      <a href="{{ url_for('main.services') }}" class="active">Services</a>
+    {% endif %}
+  </div>
+  <div class="nav-user">
+    <span class="pill role-{{ session.role }}">{{ 'RECEPTIONIST' if session.role == 'staff' else session.role|upper }}</span>
+    <span class="uname">{{ session.name }}</span>
+    <a href="{{ url_for('main.change_password') }}" class="btn-chpw">🔑 Change Password</a>
+    <a href="{{ url_for('main.logout') }}" class="btn-logout">Logout</a>
+  </div>
+</nav>
+
+<div class="flash-zone">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="alert alert-{{ cat }}">{{ msg }}</div>{% endfor %}
+  {% endwith %}
+</div>
+
+<main>
+<div class="page-hdr">
+  <div><h2>Hospital Services</h2><p>Departments and medical services available at Bugema University Hospital.</p></div>
+</div>
+
+<div class="services-grid">
+
+  <div class="svc-card" role="article" aria-label="General Medicine service">
+    <div class="svc-img" style="background-image: url('{{ url_for('static', filename='images/general-medicine.jpg') }}');" aria-hidden="true"></div>
+    <div class="svc-content">
+      <h3>General Medicine</h3>
+      <p>Diagnosis and treatment of common illnesses, chronic conditions, and preventive care for all age groups.</p>
+      <span class="svc-tag">Walk-in & Appointments</span>
+    </div>
+  </div>
+
+  <div class="svc-card" role="article" aria-label="Paediatrics service">
+    <div class="svc-img" style="background-image: url('{{ url_for('static', filename='images/paediatrics.jpg') }}');" aria-hidden="true"></div>
+    <div class="svc-content">
+      <h3>Paediatrics</h3>
+      <p>Comprehensive healthcare for infants, children, and adolescents including immunisations and growth monitoring.</p>
+      <span class="svc-tag">Appointments Required</span>
+    </div>
+  </div>
+
+  <div class="svc-card" role="article" aria-label="Obstetrics and Gynaecology service">
+    <div class="svc-img" style="background-image: url('{{ url_for('static', filename='images/obstetrics.jpg') }}');" aria-hidden="true"></div>
+    <div class="svc-content">
+      <h3>Obstetrics & Gynaecology</h3>
+      <p>Maternal care, antenatal clinics, delivery services, and gynaecological consultations.</p>
+      <span class="svc-tag">Appointments Required</span>
+    </div>
+  </div>
+
+  <div class="svc-card" role="article" aria-label="Dental Services">
+    <div class="svc-img" style="background-image: url('{{ url_for('static', filename='images/dental.jpg') }}');" aria-hidden="true"></div>
+    <div class="svc-content">
+      <h3>Dental Services</h3>
+      <p>Routine check-ups, fillings, extractions, oral hygiene advice, and dental X-rays.</p>
+      <span class="svc-tag">Appointments Required</span>
+    </div>
+  </div>
+
+  <div class="svc-card" role="article" aria-label="Ophthalmology service">
+    <div class="svc-img" style="background-image: url('{{ url_for('static', filename='images/ophthalmology.jpg') }}');" aria-hidden="true"></div>
+    <div class="svc-content">
+      <h3>Ophthalmology</h3>
+      <p>Eye examinations, vision testing, treatment of eye conditions, and referrals for specialist surgery.</p>
+      <span class="svc-tag">Appointments Required</span>
+    </div>
+  </div>
+
+  <div class="svc-card" role="article" aria-label="Mental Health service">
+    <div class="svc-img" style="background-image: url('{{ url_for('static', filename='images/mental-health.jpg') }}');" aria-hidden="true"></div>
+    <div class="svc-content">
+      <h3>Mental Health</h3>
+      <p>Counselling, psychiatric assessments, and support for students and staff managing stress and mental health challenges.</p>
+      <span class="svc-tag">Confidential & By Appointment</span>
+    </div>
+  </div>
+
+  <div class="svc-card" role="article" aria-label="Radiology and Imaging service">
+    <div class="svc-img" style="background-image: url('{{ url_for('static', filename='images/radiology.jpg') }}');" aria-hidden="true"></div>
+    <div class="svc-content">
+      <h3>Radiology & Imaging</h3>
+      <p>X-rays, ultrasound scans, and diagnostic imaging to support clinical diagnosis.</p>
+      <span class="svc-tag">Referral Required</span>
+    </div>
+  </div>
+
+  <div class="svc-card" role="article" aria-label="Laboratory Services">
+    <div class="svc-img" style="background-image: url('{{ url_for('static', filename='images/laboratory.jpg') }}');" aria-hidden="true"></div>
+    <div class="svc-content">
+      <h3>Laboratory Services</h3>
+      <p>Blood tests, urinalysis, malaria RDTs, HIV testing, and other diagnostic investigations.</p>
+      <span class="svc-tag">Walk-in & Referral</span>
+    </div>
+  </div>
+
+  <div class="svc-card" role="article" aria-label="Emergency and Casualty service">
+    <div class="svc-img" style="background-image: url('{{ url_for('static', filename='images/emergency.jpg') }}');" aria-hidden="true"></div>
+    <div class="svc-content">
+      <h3>Emergency & Casualty</h3>
+      <p>24-hour emergency care for accidents, acute illnesses, and urgent medical conditions.</p>
+      <span class="svc-tag">24 / 7 Walk-in</span>
+    </div>
+  </div>
+
+  <div class="svc-card" role="article" aria-label="Pharmacy service">
+    <div class="svc-img" style="background-image: url('{{ url_for('static', filename='images/pharmacy.jpg') }}');" aria-hidden="true"></div>
+    <div class="svc-content">
+      <h3>Pharmacy</h3>
+      <p>Dispensing of prescribed medications, over-the-counter medicines, and patient counselling on drug use.</p>
+      <span class="svc-tag">Open Daily</span>
+    </div>
+  </div>
+
+  <div class="svc-card" role="article" aria-label="Physiotherapy service">
+    <div class="svc-img" style="background-image: url('{{ url_for('static', filename='images/physiotherapy.jpg') }}');" aria-hidden="true"></div>
+    <div class="svc-content">
+      <h3>Physiotherapy</h3>
+      <p>Rehabilitation for injuries, post-operative recovery, and management of musculoskeletal conditions.</p>
+      <span class="svc-tag">Appointments Required</span>
+    </div>
+  </div>
+
+  <div class="svc-card" role="article" aria-label="HIV AIDS Clinic service">
+    <div class="svc-img" style="background-image: url('{{ url_for('static', filename='images/hiv-clinic.jpg') }}');" aria-hidden="true"></div>
+    <div class="svc-content">
+      <h3>HIV / AIDS Clinic</h3>
+      <p>Voluntary counselling and testing, ART management, and adherence support in a confidential setting.</p>
+      <span class="svc-tag">Confidential & Free</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Role-specific note -->
+<div class="card" style="margin-top:1.5rem;">
+  <div class="card-hdr"><h3>How to Access These Services</h3></div>
+  <div style="padding:.5rem 0; font-size:.92rem; color:var(--text);">
+    {% if session.role == 'patient' %}
+    <p>After submitting your appointment request, please wait for it to be confirmed. You can track the status on your dashboard. Contact reception if you need help.</p>
+    {% elif session.role == 'staff' %}
+    <p>Book appointments for patients using the Appointments section. Register new patients using Register Patient. Patients can also log in and book on their own.</p>
+    {% elif session.role == 'doctor' %}
+    <p>Appointments assigned to you appear on your schedule. Update statuses after consultations to keep patient records accurate.</p>
+    {% elif session.role == 'admin' %}
+    <p>You have full access to manage all services, doctors, patients, staff, and appointments from the navigation above.</p>
+    {% endif %}
+  </div>
+</div>
+
+</main>
+<footer>Bugema University Hospital &mdash; All rights reserved.</footer>
+</body>
+</html>
